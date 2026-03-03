@@ -1,0 +1,817 @@
+# Day G2 — Branching, Merging, and GitHub
+
+> **Time budget:** 2–4 hours of focused work.
+> **Prerequisite:** Day G1 completed. You have `achilles-practice/` with ~9 commits and clean messages.
+> **Outcome:** You understand branches, merges, conflicts, Pull Requests, and the professional feature-branch workflow. Your code is live on GitHub.
+
+> [!IMPORTANT]
+> **This is a practice repository, NOT the final Achilles project.**
+>
+> The `achilles-practice` directory and the GitHub `achilles` repo you create today contain placeholder `.rs` files — not a real Rust project. Their purpose is
+to teach you Git and GitHub mechanics in an Achilles-flavored context.
+>
+> When **Phase 1 (Day 1)** begins, you will create a **fresh, proper Rust project** using `cargo init` with a real `Cargo.toml`, a `src/` directory, dependency
+management, and a compilable binary. That will be the real Achilles repository.
+>
+> **What to do with this practice repo when Phase 1 starts:**
+> - **Recommended:** Rename it on GitHub to `achilles-git-practice` (or delete it), then create a new `achilles` repo for the real project.
+> - **Alternative:** Wipe the practice files, run `cargo init` in the same repo, and continue. This preserves your early commit history but mixes practice and production.
+
+---
+
+## Why This Day Matters
+
+On Day G1 you worked on a single timeline — every commit went straight onto `main`. This is fine for solo warmups. It will **destroy** you on a real project.
+
+Here's why: you're on Day 15 implementing the execution loop. It's half-done — tests are broken, the code doesn't compile. Then you discover a critical bug in
+the scope enforcer from Day 19. You need to fix it now. But `main` is broken with your half-finished execution loop. You can't ship a fix without also shipping broken code.
+
+Branches solve this. Your execution loop lives on `phase-4/execution-loop`. `main` is always clean, always compiles, always works. When you need to fix the
+scope enforcer, you branch off `main` — which is stable — fix it, merge it back. The execution loop on its own branch is undisturbed.
+
+**Branches are not a complexity feature. They are how you work on something experimental without breaking what already works.**
+
+---
+
+## Part 1: What Is a Branch?
+
+A branch in Git is a **lightweight pointer to a commit**. That's it. Not a copy of your code. Not a separate folder. A 41-byte file containing a commit hash.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                         BRANCH MODEL                             │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│   Commit history:                                                │
+│                                                                  │
+│     A ← B ← C ← D ← E                                          │
+│                       ↑                                          │
+│                      main                                        │
+│                       ↑                                          │
+│                      HEAD                                        │
+│                                                                  │
+│   After: git checkout -b feature                                 │
+│                                                                  │
+│     A ← B ← C ← D ← E                                          │
+│                       ↑                                          │
+│                      main                                        │
+│                      feature ← HEAD                              │
+│                                                                  │
+│   After committing F and G on feature:                           │
+│                                                                  │
+│     A ← B ← C ← D ← E ← F ← G                                 │
+│                       ↑       ↑                                  │
+│                      main    feature ← HEAD                      │
+│                                                                  │
+│   main didn't move. feature advanced. They diverge.              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Key insight:** When you create a branch, you're not copying files. You're creating a new pointer that starts at the same commit. As you make commits, the
+pointer moves forward. `main` stays where it was. The branches have now *diverged* — and that's exactly the point.
+
+**Why this matters for Achilles:** When you build the nmap node (Day 23), you'll work on `phase-7/nmap-node`. Commits pile up on that branch. Meanwhile, `main`
+contains your clean, tested code from everything before Day 23. When the nmap node works, you merge it into `main`. If it doesn't work out, you delete the branch.
+`main` is never contaminated.
+
+---
+
+## Part 2: Exercises
+
+### Exercise 1 — Push Your Local Repository to GitHub
+
+This is the moment your code becomes public. Your portfolio starts here.
+
+**Step 1: Create a GitHub account** (if you don't have one).
+
+Go to [github.com](https://github.com) and sign up. Use a professional username — this will be on your resume.
+
+**Step 2: Create a new repository on GitHub.**
+
+- Click **"New repository"** (or go to `github.com/new`)
+- Repository name: `achilles`
+- Description: `Offensive Security Orchestration Engine — CLI-first security automation platform`
+- Visibility: **Public** (this is your portfolio)
+- **Do NOT** check "Add a README file"
+- **Do NOT** check "Add .gitignore"
+- **Do NOT** choose a license yet (we'll add Apache 2.0 on Day 36)
+- Click **Create repository**
+
+GitHub will show you instructions. Follow the "push an existing repository" section:
+
+**Step 3: Connect your local repo to GitHub.**
+
+```bash
+cd achilles-practice
+git remote add origin https://github.com/YOURUSERNAME/achilles.git
+```
+
+Replace `YOURUSERNAME` with your actual GitHub username.
+
+**Understand what just happened:** `git remote add origin <url>` tells your local Git: "there is a remote copy of this repository at this URL,
+and I'm calling it `origin`." `origin` is a convention — it means "the primary remote." You can have multiple remotes, but for a solo project, `origin` is the only one you need.
+
+Verify:
+
+```bash
+git remote -v
+```
+
+Output:
+
+```
+origin  https://github.com/YOURUSERNAME/achilles.git (fetch)
+origin  https://github.com/YOURUSERNAME/achilles.git (push)
+```
+
+**Step 4: Push your history to GitHub.**
+
+```bash
+git push -u origin main
+```
+
+**Understand the flags:**
+- `push` — send commits from your local repository to the remote
+- `-u` — set `origin/main` as the "upstream" for your local `main` branch. After this, `git push` alone (no arguments) will push to `origin main` automatically
+- `origin main` — push to the remote called `origin`, branch called `main`
+
+**Step 5: Open your browser.** Go to `github.com/YOURUSERNAME/achilles`.
+
+Your commits are there. Your history is visible. Anyone in the world can see it. Click on "Commits" — each one with your clean `type(component):
+description` message. This is your portfolio, live.
+
+### Before You Push: Authentication Setup
+
+GitHub no longer accepts passwords for `git push`. You must authenticate using one of the methods below. **SSH is recommended** — set it up once and never think about it again.
+
+---
+
+#### Option A: SSH Key Authentication (Recommended)
+
+SSH keys use public-key cryptography. You generate a key pair: a **private key** (stays on your machine, never shared) and a **public key** (given to GitHub). When you push, Git proves to GitHub that you hold the private key, without ever sending it.
+
+**Step A1: Check if you already have an SSH key.**
+
+```bash
+ls -la ~/.ssh/
+```
+
+If you see `id_ed25519` and `id_ed25519.pub` (or `id_rsa` / `id_rsa.pub`), you already have a key. Skip to Step A3.
+
+If the directory doesn't exist or is empty, proceed:
+
+**Step A2: Generate a new SSH key.**
+
+```bash
+ssh-keygen -t ed25519 -C "your.email@example.com"
+```
+
+- `-t ed25519` — Use the Ed25519 algorithm (modern, fast, secure). Prefer this over RSA.
+- `-C "your.email@example.com"` — A comment label, typically your email. This helps identify the key.
+
+When prompted:
+
+```
+Enter file in which to save the key (/home/youruser/.ssh/id_ed25519):
+```
+
+Press **Enter** to accept the default path.
+
+```
+Enter passphrase (empty for no passphrase):
+```
+
+**Set a passphrase.** This protects your private key if someone gains access to your machine. You'll use `ssh-agent` so you don't have to type it every time.
+
+**Step A3: Start the ssh-agent and add your key.**
+
+On Arch Linux, `ssh-agent` is included in the `openssh` package (which you almost certainly have). Start it and add your key:
+
+```bash
+# Start the agent in the background
+eval "$(ssh-agent -s)"
+```
+
+Output: `Agent pid 12345`
+
+```bash
+# Add your private key to the agent
+ssh-add ~/.ssh/id_ed25519
+```
+
+Enter your passphrase when prompted. The agent now holds your key in memory — you won't be asked for the passphrase again until you log out or reboot.
+
+> **Persistent agent on Arch Linux:** To avoid running `eval "$(ssh-agent -s)"` every time you open a terminal, add it to your shell config:
+>
+> For **zsh** (`~/.zshrc`) or **bash** (`~/.bashrc`):
+> ```bash
+> # Start ssh-agent if not already running
+> if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+>     ssh-agent -t 1h > "$XDG_RUNTIME_DIR/ssh-agent.env"
+> fi
+> if [[ ! -f "$SSH_AUTH_SOCK" ]]; then
+>     source "$XDG_RUNTIME_DIR/ssh-agent.env" >/dev/null
+> fi
+> ```
+>
+> Alternatively, if you use **systemd**, enable the user service:
+> ```bash
+> systemctl --user enable --now ssh-agent.service
+> ```
+> Then add `export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"` to your shell config.
+
+**Step A4: Copy your public key.**
+
+```bash
+cat ~/.ssh/id_ed25519.pub
+```
+
+This prints your public key. It looks like:
+
+```
+ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIG... your.email@example.com
+```
+
+Copy the **entire line** (including `ssh-ed25519` at the start and your email at the end).
+
+> On Arch with X11/Wayland, you can pipe directly to clipboard:
+> ```bash
+> # X11 (using xclip — install with: sudo pacman -S xclip)
+> cat ~/.ssh/id_ed25519.pub | xclip -selection clipboard
+>
+> # Wayland (using wl-copy — install with: sudo pacman -S wl-clipboard)
+> cat ~/.ssh/id_ed25519.pub | wl-copy
+> ```
+
+**Step A5: Add the public key to GitHub.**
+
+1. Go to [github.com/settings/keys](https://github.com/settings/keys)
+2. Click **"New SSH key"**
+3. Title: something descriptive like `Arch Linux - Main Machine`
+4. Key type: **Authentication**
+5. Paste your public key into the "Key" field
+6. Click **"Add SSH key"**
+
+**Step A6: Test the connection.**
+
+```bash
+ssh -T git@github.com
+```
+
+You should see:
+
+```
+Hi YOURUSERNAME! You've been successfully authenticated, but GitHub does not provide shell access.
+```
+
+If you see this, SSH is working. If you see "Permission denied," double-check that you added the correct public key and that your private key is loaded in the agent (`ssh-add -l` to list loaded keys).
+
+**Step A7: Use the SSH remote URL.**
+
+When adding the remote, use the SSH URL format instead of HTTPS:
+
+```bash
+# If you already added the HTTPS remote, switch it:
+git remote set-url origin git@github.com:YOURUSERNAME/achilles.git
+
+# Or if adding fresh:
+git remote add origin git@github.com:YOURUSERNAME/achilles.git
+```
+
+Note the format difference:
+- HTTPS: `https://github.com/YOURUSERNAME/achilles.git`
+- SSH: `git@github.com:YOURUSERNAME/achilles.git`
+
+From now on, `git push` and `git pull` use SSH automatically. No passwords, no tokens, no prompts.
+
+---
+
+#### Option B: HTTPS with Git Credential Helper
+
+If you prefer HTTPS (simpler setup, works through firewalls that block SSH port 22):
+
+**Step B1: Create a Personal Access Token (PAT).**
+
+1. Go to [github.com/settings/tokens](https://github.com/settings/tokens?type=beta) (Fine-grained tokens)
+2. Click **"Generate new token"**
+3. Token name: `achilles-dev`
+4. Expiration: 90 days (you can regenerate later)
+5. Repository access: **"All repositories"** (or select just `achilles`)
+6. Permissions → Repository permissions → Contents: **Read and write**
+7. Click **"Generate token"**
+8. **Copy the token immediately** — you won't see it again
+
+**Step B2: Configure Git to cache your credentials.**
+
+On Arch Linux, use the `git-credential-libsecret` helper to store credentials securely in your system keyring:
+
+```bash
+# Install the libsecret credential helper
+sudo pacman -S libsecret
+
+# Tell Git to use it
+git config --global credential.helper /usr/lib/git-core/git-credential-libsecret
+```
+
+> If you don't want to use a keyring, a simpler (less secure) option:
+> ```bash
+> # Cache credentials in memory for 8 hours
+> git config --global credential.helper 'cache --timeout=28800'
+> ```
+
+**Step B3: Push — enter credentials once.**
+
+```bash
+git push -u origin main
+```
+
+When prompted:
+- Username: your GitHub username
+- Password: **paste your Personal Access Token** (NOT your GitHub password)
+
+The credential helper stores it. Future pushes won't prompt again.
+
+---
+
+#### Option C: GitHub CLI (`gh`)
+
+The fastest way to handle authentication if you don't want to deal with keys or tokens manually.
+
+```bash
+# Install on Arch Linux
+sudo pacman -S github-cli
+
+# Authenticate
+gh auth login
+```
+
+Follow the interactive prompts:
+1. **GitHub.com** (not Enterprise)
+2. **SSH** (recommended) or HTTPS
+3. If SSH: it offers to generate and upload a key for you automatically
+4. If HTTPS: it opens a browser for OAuth login — no token needed
+
+After `gh auth login`, Git push/pull just works. `gh` also gives you CLI access to GitHub features: `gh pr create`, `gh pr list`, `gh repo view`, etc.
+
+---
+
+**Verify your setup works before continuing:**
+
+```bash
+git push -u origin main
+```
+
+If this succeeds without errors, your authentication is configured. Move on.
+
+---
+
+### Exercise 2 — Create a Branch, Make Commits, and Open a Pull Request
+
+This is the professional feature development workflow.
+
+**Step 1: Create a feature branch.**
+
+```bash
+git checkout -b phase-0-practice
+```
+
+**Understand:** `checkout -b` does two things: (1) creates a new branch called `phase-0-practice` pointing at your current commit, and (2) switches `HEAD`
+to that branch. Every commit you make now advances `phase-0-practice`, not `main`.
+
+Verify:
+
+```bash
+git branch
+```
+
+Output:
+
+```
+  main
+* phase-0-practice
+```
+
+The `*` shows your current branch.
+
+**Step 2: Make 3 commits on this branch.**
+
+Each commit should be a meaningful, atomic change. Here are three things to do:
+
+**Commit 1 — Add a tools module placeholder:**
+
+```bash
+cat > tools.rs << 'EOF'
+// Tool node implementations
+// Each security tool (nmap, subfinder, nuclei, etc.) gets a module here.
+//
+// Architecture reference: §6 (Node Library Architecture)
+//
+// Every tool node implements the Node trait:
+//   - input_schema()  → What ADC types does this node consume?
+//   - output_schema() → What ADC types does this node produce?
+//   - config_schema() → What configuration options does it accept?
+//   - validate()      → Is the config valid? (before execution)
+//   - execute()       → Run the tool, transform output, return ADC objects
+
+pub mod nmap;
+pub mod subfinder;
+pub mod httpx;
+pub mod nuclei;
+pub mod ffuf;
+EOF
+
+git add tools.rs
+git commit -m "feat(tools): add tool module placeholder with architecture notes"
+```
+
+**Commit 2 — Add a workflow module placeholder:**
+
+```bash
+cat > workflow.rs << 'EOF'
+// Workflow engine core
+// Parses YAML workflow files, builds DAG, executes nodes
+//
+// Architecture reference: §5 (The Workflow Engine)
+//
+// Key components:
+//   - YAML parser (serde_yaml)
+//   - DAG builder (petgraph)
+//   - Executor (tokio async runtime)
+//   - State manager (SQLite checkpointing)
+
+pub struct Workflow {
+    pub name: String,
+    pub nodes: Vec<WorkflowNode>,
+}
+
+pub struct WorkflowNode {
+    pub name: String,
+    pub tool: String,
+    pub depends_on: Vec<String>,
+}
+EOF
+
+git add workflow.rs
+git commit -m "feat(engine): add workflow struct definitions with DAG references"
+```
+
+**Commit 3 — Update README with architecture overview:**
+
+```bash
+cat >> README.md << 'EOF'
+
+## Architecture
+
+Achilles is built on three pillars:
+
+1. **Schema Sovereignty** — All data between nodes conforms to the Achilles Data Contract (ADC)
+2. **Scope Discipline** — The engine enforces target scope at runtime
+3. **Operator Trust** — Approval gates, audit logs, and sandboxed scripts
+
+See `docs/project_achilles_analysis.md` for the full architectural specification.
+EOF
+
+git add README.md
+git commit -m "docs(readme): add architecture overview with three pillars"
+```
+
+**Step 3: Check your branch history.**
+
+```bash
+git log --oneline --graph --all
+```
+
+The `--all` flag shows ALL branches. You should see `main` at your old commit and `phase-0-practice` three commits ahead. They
+have **diverged** — `main` is stable, your branch has new work.
+
+**Step 4: Push the branch to GitHub.**
+
+```bash
+git push origin phase-0-practice
+```
+
+This creates the branch on GitHub. Your local branch now has a remote counterpart.
+
+**Step 5: Open a Pull Request on GitHub.**
+
+1. Go to `github.com/YOURUSERNAME/achilles`
+2. GitHub will show a banner: "phase-0-practice had recent pushes — Compare & pull request"
+3. Click it
+4. Fill in the PR:
+   - **Title:** `feat: add tool and workflow module placeholders with architecture docs`
+   - **Description:** Write a short paragraph explaining what this PR adds and why. Something like:
+     ```
+     This PR adds placeholder modules for the tool library and workflow engine,
+     along with architecture documentation in the README. These provide the
+     structural foundation for Phase 1 implementation.
+
+     Changes:
+     - tools.rs: Module declarations for all 5 tool nodes (nmap, subfinder, httpx, nuclei, ffuf)
+     - workflow.rs: Workflow and WorkflowNode struct definitions
+     - README.md: Architecture overview with the three pillars
+     ```
+5. Click **"Create pull request"**
+
+**Step 6: Review your own PR.**
+
+This is what code review looks like. On the PR page:
+
+- **"Files changed" tab** — Shows the full diff of every changed file. Click on any line to leave a comment. In a team setting, reviewers comment on
+specific lines with questions or suggestions.
+- **"Commits" tab** — Shows each commit individually. A reviewer can see the logical progression: first tools, then workflow, then docs.
+- **"Conversation" tab** — Where discussion happens. The PR description, comments, and review approvals live here.
+
+Read through every tab. Understand: **this is how professional software development works.** Every feature you build on Achilles will go through
+this flow: branch → commits → PR → review → merge.
+
+---
+
+### Exercise 3 — Merge the PR and Clean Up
+
+**Step 1: Merge the PR on GitHub.**
+
+On the PR page, click **"Merge pull request"** → **"Confirm merge"**.
+
+GitHub will ask which merge strategy to use. For now, use the default **"Create a merge commit."** (On Day G3 you'll learn about squash-and-merge
+and rebase-and-merge — and why you might prefer them.)
+
+**Step 2: Update your local repository.**
+
+Your GitHub `main` now has the merge commit, but your local `main` doesn't know about it yet.
+
+```bash
+git checkout main
+git pull origin main
+```
+
+**Understand:** `git pull` = `git fetch` (download changes from remote) + `git merge` (integrate them into your local branch). Your local `main` now matches GitHub's `main`.
+
+**Step 3: Delete the merged branch.**
+
+The branch served its purpose. It's merged. Clean up:
+
+```bash
+# Delete local branch
+git branch -d phase-0-practice
+```
+
+The `-d` flag is "safe delete" — Git refuses if the branch has unmerged changes. Use `-D` (capital D) to force-delete, but only when you're sure you're throwing away work intentionally.
+
+```bash
+# Delete remote branch (optional — GitHub auto-deletes if you enable it)
+git push origin --delete phase-0-practice
+```
+
+**Step 4: Observe the merge in history.**
+
+```bash
+git log --oneline --graph
+```
+
+You'll see a **merge commit** — a commit with two parents. One parent is the `main` history, the other is your branch. The merge commit ties them together.
+The `--graph` flag draws the branch/merge structure visually.
+
+---
+
+### Exercise 4 — Simulate and Resolve a Merge Conflict
+
+Conflicts are not errors. They are Git saying: *"Two changes touched the same lines — I can't decide which one you want. You decide."*
+
+This exercise deliberately creates a conflict so you learn to resolve it calmly.
+
+**Step 1: Create a branch and edit `main.rs`.**
+
+```bash
+git checkout -b conflict-experiment
+```
+
+Edit the **first line** of `main.rs`. Change it to something different:
+
+```bash
+# Replace the first line (whatever it is) with this:
+sed -i '1s/.*/\/\/ Achilles v0.1 — Security Orchestration Engine/' main.rs
+```
+
+Commit:
+
+```bash
+git add main.rs
+git commit -m "docs(core): update header comment to include version"
+```
+
+**Step 2: Switch back to `main` and edit the SAME line differently.**
+
+```bash
+git checkout main
+```
+
+Edit the **same first line** to something else:
+
+```bash
+sed -i '1s/.*/\/\/ Project Achilles — Offensive Security Platform/' main.rs
+```
+
+Commit:
+
+```bash
+git add main.rs
+git commit -m "docs(core): update header comment to use full project name"
+```
+
+**Step 3: Try to merge. Watch it fail.**
+
+```bash
+git merge conflict-experiment
+```
+
+Output:
+
+```
+Auto-merging main.rs
+CONFLICT (content): Merge conflict in main.rs
+Automatic merge failed; fix conflicts and then commit the result.
+```
+
+**This is not an error.** Git found two changes to the same line and doesn't know which one you want. It marked the conflict in the file and is waiting for you to decide.
+
+**Step 4: Read the conflict markers.**
+
+```bash
+cat main.rs
+```
+
+You'll see something like:
+
+```
+<<<<<<< HEAD
+// Project Achilles — Offensive Security Platform
+=======
+// Achilles v0.1 — Security Orchestration Engine
+>>>>>>> conflict-experiment
+```
+
+**Understand the markers:**
+
+| Marker | Meaning |
+|--------|---------|
+| `<<<<<<< HEAD` | Start of YOUR current branch's version (the branch you're ON — `main`) |
+| `=======` | Separator between the two versions |
+| `>>>>>>> conflict-experiment` | End of the INCOMING branch's version |
+
+Everything between `<<<<<<< HEAD` and `=======` is what `main` has. Everything between `=======` and `>>>>>>> conflict-experiment` is what the branch has.
+
+**Step 5: Resolve the conflict manually.**
+
+Open `main.rs` in your editor. Delete the conflict markers and keep the version you want (or combine them):
+
+```rust
+// Achilles v0.1 — Offensive Security Orchestration Engine
+```
+
+Save the file. The conflict markers (`<<<<<<<`, `=======`, `>>>>>>>`) must be completely removed. If any remain, Git won't accept the commit.
+
+**Step 6: Complete the merge.**
+
+```bash
+git add main.rs
+git commit -m "merge: resolve header comment conflict, combine version and full name"
+```
+
+**Step 7: Verify.**
+
+```bash
+git log --oneline --graph
+```
+
+You'll see the merge commit with two parent lines converging. The conflict is resolved. History continues.
+
+**Step 8: Clean up.**
+
+```bash
+git branch -d conflict-experiment
+```
+
+---
+
+## Part 3: Understanding Merge Strategies
+
+Git has different ways to integrate branches. Understanding them now prevents confusion later.
+
+### Fast-Forward Merge
+
+When `main` hasn't moved since you branched, Git just moves the `main` pointer forward. No merge commit created.
+
+```
+Before:                        After fast-forward merge:
+main                           
+  ↓                            
+  A ← B ← C ← D ← E          A ← B ← C ← D ← E
+                    ↑                              ↑
+                  feature                         main, feature
+```
+
+This happens when you run `git merge feature` and there's nothing new on `main` since the branch was created. Git says: "No divergence, I'll just move the pointer."
+
+### Three-Way Merge (What You Just Did)
+
+When both branches have new commits, Git creates a merge commit with two parents.
+
+```
+Before:                        After three-way merge:
+      F ← G (feature)                F ← G
+     /                               /     \
+A ← B ← C ← D (main)          A ← B ← C ← D ← M (main)
+                                              merge commit
+```
+
+The merge commit `M` has two parents: `D` (main's tip) and `G` (feature's tip). It records the act of combining the branches.
+
+### When Conflicts Happen
+
+Conflicts occur during three-way merges when both branches modify the same lines. Git can auto-merge changes to different files, or even different parts
+of the same file. It only asks for help when the same lines are touched.
+
+**Why this matters for Achilles:** On Day G3 you'll learn about **rebase**, which avoids merge commits entirely by replaying your commits on top of `main`.
+For a solo project like Achilles, rebase produces a cleaner history. But understanding merge first is essential — rebase is a merge strategy, not a replacement.
+
+---
+
+## Part 4: The Pull Request Workflow
+
+This is the workflow you will use for **every single feature** from Phase 1 onward. Memorize it:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│              THE PROFESSIONAL FEATURE WORKFLOW                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. git checkout main                                            │
+│  2. git pull origin main              ← Get latest               │
+│  3. git checkout -b phase-N/feature   ← Create branch            │
+│  4. Write code. Commit frequently.    ← Small, atomic commits    │
+│  5. git push origin phase-N/feature   ← Push branch              │
+│  6. Open Pull Request on GitHub       ← Describe the change      │
+│  7. Review your own diff              ← Would a stranger get it? │
+│  8. Merge the PR                      ← main advances            │
+│  9. git checkout main && git pull     ← Update local              │
+│ 10. git branch -d phase-N/feature     ← Clean up                 │
+│                                                                  │
+│  Branch naming convention:                                       │
+│    phase-1/subprocess-runner                                     │
+│    phase-2/adc-host-struct                                       │
+│    phase-4/dag-builder                                           │
+│    phase-7/nmap-node                                             │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Why open PRs even when solo?**
+
+1. **Record:** Each PR is a timestamped, permanent record of what you built and why. It's a diary of your development.
+2. **Diff review:** The PR diff view forces you to read your changes as a reviewer would. You will catch bugs, dead code, and unclear variable names that you missed while writing.
+3. **Portfolio:** Hiring managers browse your PRs. A well-described PR with clean commits is a stronger signal than 10,000 lines in a single commit.
+4. **Habit:** When you collaborate (and you will), this workflow is mandatory. Learning it solo means it's already muscle memory when it matters.
+
+---
+
+## Part 5: Key Concepts to Internalize
+
+| Question | Your Answer Should Include |
+|----------|--------------------------|
+| What is a branch? | A lightweight pointer to a commit (a 41-byte file with a hash) |
+| What does `git checkout -b feature` do? | Creates a new branch at the current commit AND switches HEAD to it |
+| What is `origin`? | The conventional name for your primary remote repository (GitHub) |
+| What does `git push -u origin main` do? | Pushes `main` to the remote `origin` and sets it as the upstream tracking branch |
+| What is a merge commit? | A commit with two parents, created when integrating diverged branches |
+| What causes a conflict? | Two branches modifying the same lines of the same file |
+| What do `<<<<<<<`, `=======`, `>>>>>>>` mean? | Conflict markers: current branch version, separator, incoming branch version |
+| What is a Pull Request? | A GitHub feature for reviewing, discussing, and merging branches — the unit of code review |
+| Why have branches? | Isolate experimental work from stable code — `main` always compiles |
+| What's a fast-forward merge? | When `main` hasn't diverged, Git just moves the pointer — no merge commit |
+| Why open PRs even solo? | Record, self-review via diff, portfolio signal, habit for collaboration |
+
+---
+
+## Completion Checklist
+
+Before moving to Day G3, verify all of the following:
+
+- [ ] My `achilles` repository exists on GitHub with all my Day G1 commits visible
+- [ ] I created a branch, made 3 commits on it, and pushed it to GitHub
+- [ ] I opened a Pull Request and read the diff, commits, and conversation tabs
+- [ ] I merged the PR on GitHub and pulled the changes locally
+- [ ] I deleted the merged branch (local and remote)
+- [ ] I deliberately created a merge conflict and resolved it by editing the conflict markers
+- [ ] I understand the difference between a fast-forward merge and a three-way merge
+- [ ] I can recite the 10-step professional feature workflow from memory (or close to it)
+- [ ] `git log --oneline --graph` shows my merge commits correctly
+
+---
+
+## Lesson
+
+> Every feature you build on Achilles should go through this flow: branch → commits → PR → merge. This is how professional code review works. A clean
+repository with well-named branches and descriptive PRs signals that you understand software development as a collaborative, disciplined practice — not just as writing code that runs.
+
+**Next: Day G3 — Rebase, History Rewriting, and Professional Workflow →**

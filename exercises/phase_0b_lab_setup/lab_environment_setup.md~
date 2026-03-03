@@ -1,0 +1,705 @@
+# Phase 0b — Lab Environment Setup
+
+> **Time budget:** 2–4 hours of focused work.
+> **Prerequisite:** Phase 0 complete. Git is mastered. Your practice repo is on GitHub.
+> **Outcome:** Rust toolchain installed, all five security tools working, a legal target environment ready, and the real Achilles project initialized.
+
+> [!IMPORTANT]
+> You cannot learn offensive security tools on systems you don't own. Every tool installed today will be wrapped by an Achilles node in later phases. If a tool isn't installed, the node can't run. Get this right now.
+
+---
+
+## Why This Day Matters
+
+On Day 3 you'll write Rust code that spawns `nmap` as a subprocess and parses its XML output. On Day 23 you'll build the full nmap node. On Day 24, subfinder. On Day 25, httpx. If any of these tools aren't installed and working, you'll be debugging installation problems instead of writing code.
+
+Professional pentesters set up lab environments before every engagement. Tool installation, target availability, and permission verification happen before a single packet is sent. Build this discipline now.
+
+---
+
+## Part 1: Install the Rust Toolchain
+
+Rust is the language for Achilles. Every line of the engine — subprocess management, ADC types, workflow engine, DAG executor, scope enforcer — is Rust.
+
+### Step 1: Install Rust via rustup
+
+On Arch Linux, you have two options. **Use rustup** (not the `rust` pacman package) — it gives you control over toolchain versions, components, and targets.
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+When prompted, choose option **1** (default installation).
+
+After installation, source the environment:
+
+```bash
+source "$HOME/.cargo/env"
+```
+
+Add this to your shell config permanently. For **zsh** (`~/.zshrc`):
+
+```bash
+echo 'source "$HOME/.cargo/env"' >> ~/.zshrc
+```
+
+For **bash** (`~/.bashrc`):
+
+```bash
+echo 'source "$HOME/.cargo/env"' >> ~/.bashrc
+```
+
+> **Why rustup over pacman?**
+>
+> `sudo pacman -S rust` installs a system-wide Rust version managed by Arch's package manager. This is fine for casual use, but:
+> - You can't easily switch between stable/nightly toolchains
+> - You can't install specific Rust versions for compatibility
+> - `rustup` manages components (clippy, rustfmt, rust-analyzer) individually
+>
+> For a project as serious as Achilles, use rustup. It's the official Rust installer recommended by the Rust project itself.
+
+### Step 2: Verify the installation
+
+```bash
+rustc --version
+cargo --version
+rustup --version
+```
+
+You should see version numbers for all three. As of writing, stable Rust is 1.85+.
+
+### Step 3: Install essential Cargo tools
+
+```bash
+# Auto-rebuild on file change — invaluable during development
+cargo install cargo-watch
+
+# Linter — catches common mistakes and suggests idiomatic Rust
+rustup component add clippy
+
+# Formatter — enforces consistent code style
+rustup component add rustfmt
+
+# Language server — powers IDE features (autocomplete, go-to-definition, etc.)
+rustup component add rust-analyzer
+```
+
+**Verify each:**
+
+```bash
+cargo watch --version
+cargo clippy --version
+cargo fmt --version
+rust-analyzer --version
+```
+
+### Step 3b: Set up Emacs for Rust development
+
+You have two options. **Pick one, not both** — they conflict with each other.
+
+---
+
+#### Option 1: Rustic (Recommended — All-in-One)
+
+`rustic` bundles everything: syntax highlighting, LSP integration (rust-analyzer), cargo commands, inline compilation errors, format-on-save, and more. One package, zero wiring.
+
+**Install with `use-package`** (add to your `~/.emacs.d/init.el` or equivalent):
+
+```elisp
+(use-package rustic
+  :ensure t
+  :config
+  ;; Use eglot as the LSP client (built-in since Emacs 29)
+  (setq rustic-lsp-client 'eglot)
+
+  ;; Format on save (optional but recommended)
+  (setq rustic-format-on-save t)
+
+  ;; Keybindings (rustic sets these up, but here's what you get):
+  ;; C-c C-c C-r  →  cargo run
+  ;; C-c C-c C-b  →  cargo build
+  ;; C-c C-c C-t  →  cargo test
+  ;; C-c C-c C-k  →  cargo clippy
+  ;; C-c C-c C-f  →  rustfmt (format buffer)
+  )
+```
+
+**Install without `use-package`:**
+
+```
+M-x package-install RET rustic RET
+```
+
+Then add to your init file:
+
+```elisp
+(require 'rustic)
+(setq rustic-lsp-client 'eglot)
+(setq rustic-format-on-save t)
+```
+
+**Verify it works:** Open any `.rs` file. You should see:
+- Syntax highlighting immediately
+- After a few seconds, `eglot` connects to `rust-analyzer` (check the modeline — it should show `[eglot:rust-analyzer]`)
+- Hover over a type or function for documentation
+- `M-.` to jump to definition, `M-,` to jump back
+- `C-c C-c C-r` to run `cargo run`
+- Inline error squiggles as you type
+
+---
+
+#### Option 2: Manual Setup (rust-mode + eglot)
+
+If you prefer assembling your own setup piece by piece:
+
+```elisp
+;; 1. rust-mode — syntax highlighting and basic cargo integration
+(use-package rust-mode
+  :ensure t
+  :hook (rust-mode . eglot-ensure)  ;; auto-connect to rust-analyzer
+  :config
+  (setq rust-format-on-save t))
+
+;; 2. eglot is built-in since Emacs 29 — no install needed
+;; It connects to rust-analyzer automatically via rust-mode hook above
+
+;; 3. Optional: cargo.el for running cargo commands
+(use-package cargo
+  :ensure t
+  :hook (rust-mode . cargo-minor-mode))
+;; Adds: C-c C-c C-b (build), C-c C-c C-r (run), C-c C-c C-t (test)
+```
+
+**Without `use-package`:**
+
+```
+M-x package-install RET rust-mode RET
+```
+
+```elisp
+(require 'rust-mode)
+(add-hook 'rust-mode-hook 'eglot-ensure)
+(setq rust-format-on-save t)
+```
+
+---
+
+> [!TIP]
+> **Which should you pick?** If you want things to just work with minimal config, use **rustic**. If you like building your editor setup from scratch and tweaking every piece, use **rust-mode + eglot**. Both use `rust-analyzer` under the hood — the IDE features (completions, diagnostics, go-to-definition) are identical.
+
+### Step 4: Test with a throwaway project
+
+```bash
+cd /tmp
+cargo new rust-test && cd rust-test
+```
+
+Edit `src/main.rs`:
+
+```bash
+cat > src/main.rs << 'EOF'
+fn main() {
+    let tools = vec!["nmap", "subfinder", "httpx", "nuclei", "ffuf"];
+
+    println!("Achilles will orchestrate {} tools:", tools.len());
+    for (i, tool) in tools.iter().enumerate() {
+        println!("  {}. {}", i + 1, tool);
+    }
+
+    // This is a preview of what Achilles does — spawn subprocesses
+    let output = std::process::Command::new("echo")
+        .arg("Hello from a subprocess!")
+        .output()
+        .expect("Failed to execute subprocess");
+
+    println!("\nSubprocess output: {}", String::from_utf8_lossy(&output.stdout));
+}
+EOF
+```
+
+Build and run:
+
+```bash
+cargo run
+```
+
+Expected output:
+
+```
+Achilles will orchestrate 5 tools:
+  1. nmap
+  2. subfinder
+  3. httpx
+  4. nuclei
+  5. ffuf
+
+Subprocess output: Hello from a subprocess!
+```
+
+Try the development tools:
+
+```bash
+# Run the linter
+cargo clippy
+
+# Format the code
+cargo fmt
+
+# Auto-rebuild on change (Ctrl+C to stop)
+cargo watch -x run
+```
+
+If all of this works, your Rust toolchain is ready. Clean up:
+
+```bash
+cd ~
+rm -rf /tmp/rust-test
+```
+
+---
+
+## Part 2: Install Security Tools
+
+These are the five tools Achilles will orchestrate. Each one becomes a node in the Achilles engine (Phase 7, Days 23–27).
+
+| Tool | Purpose | Achilles Node (Phase 7) | Language |
+|------|---------|------------------------|----------|
+| **nmap** | Port scanning, service detection | Day 23 | C |
+| **subfinder** | Subdomain enumeration | Day 24 | Go |
+| **httpx** | HTTP probing, tech detection | Day 25 | Go |
+| **nuclei** | Vulnerability scanning with templates | Day 26 | Go |
+| **ffuf** | Web fuzzing (directories, parameters) | Day 27 | Go |
+
+### Step 1: Install nmap
+
+nmap is in the official Arch repositories:
+
+```bash
+sudo pacman -S nmap
+```
+
+Verify:
+
+```bash
+nmap --version
+```
+
+**Understand privileges:**
+
+```bash
+# TCP Connect scan — no root needed
+nmap -sT scanme.nmap.org -p 22,80,443
+
+# SYN scan — requires root (sends raw packets)
+sudo nmap -sS scanme.nmap.org -p 22,80,443
+```
+
+| Scan Type | Flag | Root Required | Why |
+|-----------|------|--------------|-----|
+| TCP Connect | `-sT` | No | Completes the full TCP handshake via the OS |
+| SYN Scan | `-sS` | Yes | Sends raw SYN packets — requires raw socket access |
+| UDP Scan | `-sU` | Yes | Sends raw UDP packets |
+| OS Detection | `-O` | Yes | Requires raw packet analysis |
+
+**Achilles will default to TCP Connect scans** to avoid requiring root, with an explicit `privileged: true` flag in workflow configs for SYN scans. This is a design decision from §6 (Node Library Architecture).
+
+### Step 2: Install Go (required for ProjectDiscovery tools)
+
+subfinder, httpx, nuclei, and ffuf are all written in Go. Install Go first:
+
+```bash
+sudo pacman -S go
+```
+
+Verify:
+
+```bash
+go version
+```
+
+Make sure your Go bin path is in your `PATH`. Add to your `~/.zshrc` (or `~/.bashrc`):
+
+```bash
+echo 'export PATH="$PATH:$(go env GOPATH)/bin"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+### Step 3: Install ProjectDiscovery tools
+
+```bash
+# Subfinder — passive subdomain enumeration
+go install -v github.com/projectdiscovery/subfinder/v2/cmd/subfinder@latest
+
+# httpx — HTTP toolkit (probing, tech detection, status codes)
+go install -v github.com/projectdiscovery/httpx/cmd/httpx@latest
+
+# nuclei — template-based vulnerability scanner
+go install -v github.com/projectdiscovery/nuclei/v3/cmd/nuclei@latest
+```
+
+> **Note:** These downloads compile from source and can take a few minutes each. The `-v` flag shows verbose output so you know it's working.
+
+### Step 4: Install ffuf
+
+```bash
+go install github.com/ffuf/ffuf/v2@latest
+```
+
+### Step 5: Verify all tools
+
+Run each one to confirm it's installed and in your PATH:
+
+```bash
+echo "=== Tool Verification ==="
+echo ""
+
+echo "nmap:"
+nmap --version | head -1
+echo ""
+
+echo "subfinder:"
+subfinder -version 2>&1 | head -1
+echo ""
+
+echo "httpx:"
+httpx -version 2>&1 | head -1
+echo ""
+
+echo "nuclei:"
+nuclei -version 2>&1 | head -1
+echo ""
+
+echo "ffuf:"
+ffuf -version 2>&1 | head -1
+echo ""
+
+echo "=== All tools verified ==="
+```
+
+If any tool shows "command not found," check:
+1. Is Go's bin path in your PATH? (`echo $PATH` — should contain `$HOME/go/bin`)
+2. Did the installation complete without errors?
+3. Open a new terminal and try again (shell config may need reloading)
+
+### Step 6: Quick test of each tool
+
+**nmap** — scan a legal target:
+
+```bash
+nmap -sT scanme.nmap.org -p 22,80,443 -oX /tmp/nmap_test.xml
+```
+
+The `-oX` flag outputs XML — this is the format Achilles will parse on Day 23. Take a look:
+
+```bash
+cat /tmp/nmap_test.xml
+```
+
+You'll see structured XML with host, port, state, and service data. This is what the nmap transformer will parse into ADC `Host` and `Port` objects.
+
+**subfinder** — find subdomains:
+
+```bash
+subfinder -d hackerone.com -silent | head -10
+```
+
+This performs **passive** enumeration — it queries public sources (certificate transparency logs, DNS databases, search engines), not the target directly. Safe and legal for any domain.
+
+**httpx** — probe discovered subdomains:
+
+```bash
+echo "hackerone.com" | httpx -silent -status-code -title
+```
+
+Shows the HTTP status code and page title. Achilles chains this after subfinder: discover subdomains → probe which ones are alive.
+
+**nuclei** — update templates and scan:
+
+```bash
+# Download/update the template library (first run only — takes a minute)
+nuclei -update-templates
+
+# Scan with a specific safe template
+echo "https://hackerone.com" | nuclei -t http/technologies/ -silent | head -5
+```
+
+> [!WARNING]
+> nuclei templates can perform intrusive actions (SQLi testing, RCE attempts, etc.). **Only use safe categories** (`http/technologies/`, `http/miscellaneous/`) on targets you don't own. On your own lab targets, anything goes.
+
+**ffuf** — web fuzzing (test locally only):
+
+```bash
+# Just verify it runs — don't fuzz external targets without permission
+ffuf -h | head -5
+```
+
+ffuf will be tested properly against your lab environment (Part 3). Clean up:
+
+```bash
+rm -f /tmp/nmap_test.xml
+```
+
+---
+
+## Part 3: Set Up a Legal Target Environment
+
+> [!CAUTION]
+> **The rule, stated once, followed always:** Never scan targets you do not own or have explicit written authorization to scan. This is not a suggestion. It is the law (Computer Fraud and Abuse Act, Computer Misuse Act, IT Act 2000 in India, or your jurisdiction's equivalent). Violations carry criminal penalties.
+
+You need dedicated, legal targets to develop and test Achilles against. Here are your options:
+
+### Option A: Docker Vulnerable Lab (Recommended for Development)
+
+Docker gives you instant, reproducible, isolated vulnerable targets. This is what you'll use most during Achilles development.
+
+**Install Docker on Arch Linux:**
+
+```bash
+sudo pacman -S docker docker-compose
+
+# Start and enable the Docker service
+sudo systemctl enable --now docker
+
+# Add yourself to the docker group (avoids needing sudo for every docker command)
+sudo usermod -aG docker $USER
+```
+
+> **Important:** Log out and log back in for the group change to take effect. Verify with `groups` — you should see `docker` listed.
+
+**Launch DVWA (Damn Vulnerable Web Application):**
+
+```bash
+docker run -d --name dvwa -p 8080:80 vulnerables/web-dvwa
+```
+
+Open `http://localhost:8080` in your browser. Default credentials: `admin` / `password`. Click "Create / Reset Database" on first login.
+
+**Now test your tools against it:**
+
+```bash
+# nmap — scan your local DVWA
+nmap -sT localhost -p 8080
+
+# httpx — probe it
+echo "http://localhost:8080" | httpx -silent -status-code -title
+
+# nuclei — scan for vulnerabilities (safe — it's YOUR container)
+echo "http://localhost:8080" | nuclei -silent | head -20
+
+# ffuf — fuzz for directories
+ffuf -u http://localhost:8080/FUZZ -w /usr/share/seclists/Discovery/Web-Content/common.txt -mc 200,301,302 2>/dev/null | head -20
+```
+
+> **Wordlists for ffuf:** Install SecLists:
+> ```bash
+> # From AUR (if you use an AUR helper like yay or paru)
+> yay -S seclists
+>
+> # Or clone directly
+> git clone --depth 1 https://github.com/danielmiessler/SecLists.git ~/SecLists
+> ```
+
+**Stop and start DVWA as needed:**
+
+```bash
+docker stop dvwa        # Stop the container
+docker start dvwa       # Start it again
+docker rm -f dvwa       # Remove it entirely
+```
+
+### Option B: HackTheBox / TryHackMe (Recommended for Learning)
+
+These platforms provide purpose-built vulnerable machines with guided walkthroughs.
+
+- **[HackTheBox](https://hackthebox.com)** — Create an account. Start with "Starting Point" machines. Connect via OpenVPN: `sudo openvpn lab_phantom.ovpn` (they provide the config file). Each machine gets its own IP on the VPN — scan freely.
+
+- **[TryHackMe](https://tryhackme.com)** — More guided, tutorial-style rooms. Great for learning specific attack techniques. Some rooms have in-browser attack boxes.
+
+Install OpenVPN on Arch Linux for HTB:
+
+```bash
+sudo pacman -S openvpn
+```
+
+### Option C: Local VM (Most Realistic)
+
+For a full lab experience, spin up a vulnerable VM:
+
+```bash
+sudo pacman -S virtualbox
+```
+
+Download a vulnerable VM image:
+- **Metasploitable 2** — Classic. Intentionally vulnerable Linux with many services.
+- **VulnHub** ([vulnhub.com](https://vulnhub.com)) — Hundreds of downloadable vulnerable VMs.
+
+Configure VirtualBox with a **host-only network** to isolate the VM from the internet. This prevents accidental scanning of external targets.
+
+### Recommended Setup for Achilles Development
+
+Use **Option A (Docker)** as your primary target during development. It's instant, reproducible, and you can spin up different targets for different tools. Use Option B for skill-building on the side. Use Option C when you need a more realistic engagement environment.
+
+---
+
+## Part 4: Initialize the Real Achilles Project
+
+Phase 0 used a practice repository. Now you create the real one.
+
+### Step 1: Create the Rust project
+
+```bash
+cd ~/Antigravity
+cargo init achilles
+cd achilles
+```
+
+This creates:
+- `Cargo.toml` — Rust's package manifest (like `package.json` or `pom.xml`)
+- `src/main.rs` — The entry point
+- `.gitignore` — A basic Rust gitignore (we'll enhance it)
+
+### Step 2: Verify it builds
+
+```bash
+cargo build
+cargo run
+```
+
+You should see `Hello, world!`. This is the starting point of the Achilles engine.
+
+### Step 3: Set up the enhanced .gitignore
+
+Replace the default `.gitignore` with the comprehensive one from Day G3:
+
+```bash
+cat > .gitignore << 'EOF'
+# ─── Rust Build Artifacts ───────────────────────────────
+/target                  # Cargo build output — never commit
+debug/                   # Debug build artifacts
+*.pdb                    # Windows debug symbols
+
+# ─── Achilles Runtime Files ─────────────────────────────
+*.enc                    # Encrypted vault files — NEVER commit secrets
+*.log                    # Audit logs — runtime artifacts, not source
+.env                     # Environment variables — NEVER commit secrets
+.env.*                   # Environment variants (.env.local, .env.prod)
+achilles.db              # SQLite state database — runtime data
+achilles.db-journal      # SQLite journal
+achilles.db-wal          # SQLite write-ahead log
+
+# ─── Scan Output & Reports ──────────────────────────────
+/output/                 # Default scan output directory
+/reports/                # Generated reports
+*.xml                    # Raw nmap XML output (large, regeneratable)
+*.jsonl                  # Raw tool JSONL output
+
+# ─── IDE & Editor Files ─────────────────────────────────
+.idea/                   # JetBrains IDEs
+.vscode/                 # VS Code
+*.swp                    # Vim swap files
+*~                       # Emacs backup files
+\#*\#                    # Emacs auto-save files
+.dir-locals.el           # Emacs directory-local variables
+
+# ─── OS Files ───────────────────────────────────────────
+.DS_Store                # macOS Finder metadata
+Thumbs.db                # Windows thumbnail cache
+EOF
+```
+
+### Step 4: Initialize Git and make the first commit
+
+```bash
+git init
+git add .
+git commit -m "chore: initialize Achilles project with cargo"
+```
+
+### Step 5: Create the GitHub repository and push
+
+1. Go to [github.com/new](https://github.com/new)
+2. Repository name: `achilles` (if you renamed the practice repo) or a new name
+3. Description: `Offensive Security Orchestration Engine — CLI-first security automation platform`
+4. **Public**. No README, no .gitignore, no license (we'll add Apache 2.0 later).
+5. Click **Create repository**
+
+```bash
+git remote add origin git@github.com:YOURUSERNAME/achilles.git
+git push -u origin main
+```
+
+### Step 6: Verify the project structure
+
+```bash
+tree -a --gitignore
+```
+
+Expected:
+
+```
+.
+├── .git/
+├── .gitignore
+├── Cargo.toml
+└── src/
+    └── main.rs
+```
+
+This is the real Achilles. Every commit from now on is production code.
+
+---
+
+## Part 5: Key Concepts to Internalize
+
+| Question | Your Answer Should Include |
+|----------|--------------------------|
+| Why use rustup over pacman's rust package? | Toolchain version management, component control, nightly/stable switching |
+| What does `cargo-watch` do? | Auto-rebuilds on file change — `cargo watch -x run` |
+| What does `cargo clippy` do? | Rust linter — catches mistakes and suggests idiomatic patterns |
+| Why does nmap SYN scan need root? | SYN scan sends raw packets, which requires raw socket access (a Linux capability) |
+| What's the difference between `-sT` and `-sS`? | `-sT` = TCP Connect (full handshake, no root). `-sS` = SYN (half-open, needs root, stealthier) |
+| What is subfinder's scan type? | Passive — queries public databases, doesn't touch the target directly |
+| What format does nmap XML output? | Structured XML with host, port, state, service data — what Achilles will parse |
+| Why use Docker for lab targets? | Instant, reproducible, isolated, no risk of scanning external targets |
+| What is the legal rule for scanning? | Never scan targets you don't own or have explicit written authorization to scan |
+| What did `cargo init` create? | `Cargo.toml`, `src/main.rs`, `.gitignore` — a minimal compilable Rust binary project |
+
+---
+
+## Completion Checklist
+
+Before moving to Phase 1, verify all of the following:
+
+- [ ] `rustc --version` shows a recent stable Rust (1.85+)
+- [ ] `cargo --version`, `cargo clippy --version`, `cargo fmt --version` all work
+- [ ] `cargo-watch` is installed (`cargo watch --version`)
+- [ ] `rust-analyzer` is installed and working in my editor
+- [ ] `nmap --version` works
+- [ ] `subfinder -version` works
+- [ ] `httpx -version` works
+- [ ] `nuclei -version` works
+- [ ] `ffuf -version` works
+- [ ] I have at least one legal target environment (Docker DVWA recommended)
+- [ ] I can scan my target with nmap and get XML output
+- [ ] The real Achilles project is initialized with `cargo init`, builds, and runs
+- [ ] The Achilles repo is on GitHub with the first commit
+- [ ] My `.gitignore` covers Rust, Achilles runtime, and editor files
+
+---
+
+## Lesson
+
+> Professional pentesters set up lab environments before every engagement. Tool installation, target availability, and permission verification happen before a single packet is sent. If you can't reproduce your target environment, you can't reproduce your results. Build this discipline now — it will define your career.
+
+---
+
+## Foundations Complete 🎉
+
+Phase 0 and Phase 0b are done. You have:
+- **Git mastery** — three-zone model, branching, rebasing, interactive history rewriting, conflict resolution, stash, reflog
+- **A professional GitHub profile** — clean commits, branch workflow, PRs
+- **Rust toolchain** — compiler, package manager, linter, formatter, language server
+- **Five security tools** — installed, verified, tested against a legal target
+- **The real Achilles project** — initialized, on GitHub, ready for code
+
+**Next: Phase 1, Day 1 — Ownership, Borrowing, and the Borrow Checker →**

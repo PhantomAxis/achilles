@@ -1,0 +1,510 @@
+# Day G1 — Git Fundamentals: The Mental Model
+
+> **Time budget:** 2–4 hours of focused work.
+> **Prerequisite:** A terminal. Nothing else.
+> **Outcome:** You understand the three-zone model, can create commits, and write professional commit messages.
+
+---
+
+## Why This Day Matters
+
+Most developers learn Git as a list of commands to memorize: `git add`, `git commit`, `git push`. This is backwards. Git is not a list of commands — it
+is a **content-addressable filesystem with a version-control interface on top**. Once you understand what Git is actually tracking, every command becomes self-evident.
+
+You are about to build Achilles — an offensive security orchestration engine. Every line you write, every design decision you make, every bug you fix will be
+preserved in Git's history. That history is not just a safety net. It is **evidence of how you think**. When a potential employer, a conference reviewer,
+or an open-source contributor looks at your project, they will look at your commit history before they look at your code.
+
+A clean, well-structured commit history says: *"This person understands software development as a discipline."* A messy history says: *"This person writes code. Sometimes it works."*
+
+Start right. Today.
+
+---
+
+## Part 1: The Three-Zone Mental Model
+
+Before you touch a single command, understand these three concepts. Everything in Git flows between these three zones:
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                     THE THREE ZONES OF GIT                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│   ┌───────────────────┐                                         │
+│   │  Working Directory │  ← The files you see and edit on disk  │
+│   │  (your editor)     │     You change them with your editor.  │
+│   └────────┬──────────┘                                         │
+│            │                                                    │
+│            │  git add                                           │
+│            ▼                                                    │
+│   ┌───────────────────┐                                         │
+│   │   Staging Area     │  ← A snapshot you are composing.       │
+│   │   (the index)      │     Not saved to history yet.          │
+│   └────────┬──────────┘     Think of it as a "draft" of your    │
+│            │                next commit.                         │
+│            │  git commit                                        │
+│            ▼                                                    │
+│   ┌───────────────────┐                                         │
+│   │   Repository       │  ← The permanent, compressed history   │
+│   │   (.git directory) │     of all snapshots you've made.      │
+│   └───────────────────┘     Immutable. Cryptographically hashed.│
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**The key insight:** `git add` does NOT save anything. It moves changes from your working directory to the staging area — like placing items on a table
+before putting them in a box. `git commit` is what seals the box and puts it on the shelf. This two-step process exists for a reason: it lets you compose
+a commit from specific changes, not just "everything I modified."
+
+**Why this matters for Achilles:** When you're implementing the nmap transformer (Day 8), you might edit the transformer code AND fix a typo in a comment
+AND refactor an import. Those are three separate logical changes. With the staging area, you commit them separately — each with its own message, each reviewable
+independently. This is professional development.
+
+---
+
+## Part 2: Exercises
+
+### Exercise 1 — Initialize a Repository and Observe the Three Zones
+
+**Do this. Do not skip.**
+
+**Step 1: Create the practice directory and initialize Git.**
+
+```bash
+mkdir achilles-practice
+cd achilles-practice
+git init
+```
+
+After `git init`, run:
+
+```bash
+git status
+```
+
+Read **every single line** of the output. You should see something like:
+
+```
+On branch main
+No commits yet
+nothing to commit (create some files and use "git add" to track them)
+```
+
+**Understand each line:**
+- `On branch main` — You are on the default branch called `main`. A branch is a pointer to a commit. You have no commits yet, so the pointer points at nothing.
+- `No commits yet` — The repository is empty. There is no history.
+- `nothing to commit` — The staging area is empty because the working directory has no tracked files.
+
+**Also examine what `git init` created:**
+
+```bash
+ls -la
+```
+
+You'll see a `.git` directory. This IS the repository. Everything Git knows — every commit, every branch, every piece of history — lives inside `.git/`.
+Your "working directory" is everything outside it.
+
+```bash
+ls .git/
+```
+
+You'll see directories like `objects/`, `refs/`, `HEAD`, `config`. Don't worry about these now, but know: `objects/` stores every file version, every commit,
+and every tree (directory snapshot) as compressed, SHA-1-hashed blobs. Git is a content-addressable storage system — the filename of each object IS the hash
+of its contents. This is why Git is fast, why it detects corruption, and why commits are immutable.
+
+---
+
+### Exercise 2 — Create a File and Watch It Move Through the Zones
+
+**Step 1: Create a file.**
+
+```bash
+cat > main.rs << 'EOF'
+fn main() {
+    println!("Achilles: Offensive Security Orchestration Engine");
+    println!("Phase 0 — Learning Git fundamentals");
+}
+EOF
+```
+
+**Step 2: Check status — observe the working directory zone.**
+
+```bash
+git status
+```
+
+Output:
+
+```
+On branch main
+No commits yet
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        main.rs
+
+nothing added to commit but untracked files present (use "git add" to track)
+```
+
+**Understand:** Git sees `main.rs` in your working directory. It is "untracked" — Git knows the file exists but is not managing it. It is NOT in the
+staging area, and NOT in the repository.
+
+**Step 3: Move the file to the staging area.**
+
+```bash
+git add main.rs
+git status
+```
+
+Output:
+
+```
+On branch main
+No commits yet
+Changes to be committed:
+  (use "git rm --cached <file>..." to unstage)
+        new file:   main.rs
+```
+
+**Understand:** The file has moved from "untracked" to "changes to be committed" — it is now in the **staging area**. If you commit now, this version of `main.rs` will
+be saved permanently.
+
+**Step 4: Seal the snapshot — create a commit.**
+
+```bash
+git commit -m "feat(core): add main entry point with startup message"
+```
+
+**Understand the message format:** `feat(core): add main entry point with startup message`
+- `feat` — this commit adds a new feature
+- `(core)` — in the core component
+- `add main entry point...` — completes the sentence: "If applied, this commit will add main entry point with startup message"
+
+**Step 5: View the history.**
+
+```bash
+git log
+```
+
+Output will show:
+
+```
+commit 7a2b3c4d... (HEAD -> main)
+Author: Your Name <your.email@example.com>
+Date:   Wed Feb 25 09:00:00 2026 +0530
+
+    feat(core): add main entry point with startup message
+```
+
+**Understand each part:**
+- `commit 7a2b3c4d...` — The SHA-1 hash of this commit. This is the commit's unique ID. It is computed from: the tree (directory state), the parent commit,
+the author, the timestamp, and the message. Change any of these, and the hash changes. This is why Git history is tamper-evident — exactly the same principle
+you'll use for Achilles's audit log hash chain (Day 21).
+- `HEAD -> main` — `HEAD` is a pointer to "where you are now." It currently points to `main`, which points to this commit.
+- `Author` — This comes from your Git config. Set it if you haven't: `git config --global user.name "Your Name"` and `git config --global user.email "you@example.com"`
+
+---
+
+### Exercise 3 — Modify, Diff, and Patch-Mode Staging
+
+This exercise teaches you how professional commits are made.
+
+**Step 1: Make multiple changes to `main.rs`.**
+
+```bash
+cat > main.rs << 'EOF'
+// Achilles — Offensive Security Orchestration Engine
+// Phase 0: Git & GitHub Fundamentals
+
+fn main() {
+    println!("=== Achilles ===");
+    println!("Offensive Security Orchestration Engine");
+    println!("Version: 0.0.1-dev");
+
+    let phase = "Phase 0: Learning Git";
+    println!("Current: {}", phase);
+}
+EOF
+```
+
+**Step 2: See what changed — `git diff`.**
+
+```bash
+git diff
+```
+
+This shows the **difference between your working directory and the staging area** (which currently matches the last commit). Lines with `-` are removed
+from the previous version. Lines with `+` are added. This is a "unified diff" format — learn to read it fluently, because every code review you ever do will use this format.
+
+**Step 3: Stage with patch mode — `git add -p`.**
+
+```bash
+git add -p
+```
+
+Patch mode shows you each "hunk" (section of changes) and asks: **stage this hunk?** Options:
+
+| Key | Meaning |
+|-----|---------|
+| `y` | Yes — stage this hunk |
+| `n` | No — skip this hunk (leave it in working directory) |
+| `s` | Split — break this hunk into smaller pieces |
+| `e` | Edit — manually edit what gets staged |
+| `q` | Quit — stop staging |
+
+**Why this matters:** In real development, you might fix a bug AND refactor a function AND add a comment in the same file. With `git add -p`, you stage only
+the bug fix, commit it with a clear message, then stage the refactor separately. Each commit tells one story. This is how you will commit to the Achilles repository
+from Day 1 of Phase 1 onward.
+
+For now, press `y` to stage all hunks (since we're learning the tool).
+
+**Step 4: Commit.**
+
+```bash
+git commit -m "feat(core): add version display and current phase tracking"
+```
+
+---
+
+### Exercise 4 — The Three-Zone Model in Action
+
+This is the exercise that makes the model click.
+
+**Step 1: Create two new files.**
+
+```bash
+cat > config.rs << 'EOF'
+// Configuration module for Achilles
+pub struct Config {
+    pub verbose: bool,
+    pub target: String,
+}
+EOF
+
+cat > scope.rs << 'EOF'
+// Scope enforcement module — the legal boundary
+// Every target must be validated against scope before scanning
+pub struct Scope {
+    pub domains: Vec<String>,
+    pub ips: Vec<String>,
+}
+EOF
+```
+
+**Step 2: Stage ONLY one file.**
+
+```bash
+git add config.rs
+```
+
+**Step 3: Run `git status` and READ IT.**
+
+```bash
+git status
+```
+
+Output:
+
+```
+On branch main
+Changes to be committed:
+  (use "git restore --staged <file>..." to unstage)
+        new file:   config.rs
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+        scope.rs
+```
+
+**Understand the three zones in action:**
+- `config.rs` is in the **staging area** ("Changes to be committed")
+- `scope.rs` is in the **working directory** only ("Untracked files")
+- `main.rs` is unchanged, so it doesn't appear — Git only shows differences
+
+If you commit now, `config.rs` enters the repository. `scope.rs` stays in your working directory, untouched.
+
+**Step 4: Commit config.rs only.**
+
+```bash
+git commit -m "feat(config): add configuration struct with verbose and target fields"
+```
+
+**Step 5: Now add and commit scope.rs.**
+
+```bash
+git add scope.rs
+git commit -m "feat(scope): add scope enforcement struct for domain and IP rules"
+```
+
+Notice: the scope enforcer is its own commit. Your history now reads:
+
+```
+feat(scope): add scope enforcement struct for domain and IP rules
+feat(config): add configuration struct with verbose and target fields
+feat(core): add version display and current phase tracking
+feat(core): add main entry point with startup message
+```
+
+A reviewer reading this history understands: first you built the entry point, then you added display, then configuration, then scope. The arc of development
+is visible. This is the discipline.
+
+---
+
+### Exercise 5 — Build History and Read It
+
+**Step 1: Make 5 more small changes. Commit each one individually.**
+
+Here are five things to do — each gets its own commit:
+
+1. **Add a comment header to `main.rs`** with your name and date.
+   ```bash
+   # Edit main.rs, add a header comment
+   git add main.rs
+   git commit -m "docs(core): add author header comment to main.rs"
+   ```
+
+2. **Create an `errors.rs` file** with a custom error enum (just a placeholder for now).
+   ```bash
+   cat > errors.rs << 'EOF'
+   // Error types for the Achilles engine
+   pub enum AchillesError {
+       ToolNotFound(String),
+       ScopeViolation(String),
+       TimeoutExceeded(u64),
+   }
+   EOF
+   git add errors.rs
+   git commit -m "feat(errors): define initial error enum with three variants"
+   ```
+
+3. **Add a `README.md`** with a one-line description.
+   ```bash
+   echo "# Achilles — Offensive Security Orchestration Engine" > README.md
+   git add README.md
+   git commit -m "docs: add initial README with project title"
+   ```
+
+4. **Update the README** with a short paragraph.
+   ```bash
+   cat >> README.md << 'EOF'
+
+   A CLI-first security automation platform that treats offensive security
+   workflows as first-class, executable, portable programs.
+   EOF
+   git add README.md
+   git commit -m "docs: add project description to README"
+   ```
+
+5. **Create a `.gitignore` file.**
+   ```bash
+   cat > .gitignore << 'EOF'
+   /target
+   *.log
+   .env
+   *.enc
+   achilles.db
+   EOF
+   git add .gitignore
+   git commit -m "chore: add .gitignore for Rust build artifacts and secrets"
+   ```
+
+**Step 2: Read the full history.**
+
+```bash
+git log --oneline --graph
+```
+
+You should see ~9 commits, newest at top. Each is a clear, atomic change with a descriptive message. This is what a professional repository looks like from the first day.
+
+---
+
+## Part 3: Commit Message Discipline
+
+This is not optional. Learn it now. Never unlearn it.
+
+### The Format
+
+```
+type(component): short imperative description
+```
+
+### Types
+
+| Type | When to use | Example |
+|------|------------|---------|
+| `feat` | Adding new functionality | `feat(nmap): add XML parser for service detection` |
+| `fix` | Fixing a bug | `fix(scope): handle wildcard domains with leading dot` |
+| `test` | Adding or modifying tests | `test(adc): add snapshot tests for Host serialization` |
+| `docs` | Documentation only | `docs(readme): add installation instructions` |
+| `refactor` | Restructuring code without changing behavior | `refactor(engine): extract DAG builder into separate module` |
+| `chore` | Build, CI, tooling | `chore(ci): add cargo clippy to GitHub Actions` |
+| `perf` | Performance improvement | `perf(transformer): use zero-copy parsing for nmap XML` |
+
+### The Litmus Test
+
+Every commit message should complete this sentence:
+
+> *"If applied, this commit will..."* → **your message here**
+
+- ✅ `feat(scope): add CIDR range matching to scope enforcer` → "If applied, this commit will add CIDR range matching to scope enforcer."
+- ❌ `fixed stuff` → "If applied, this commit will fixed stuff." — grammatically broken, semantically empty.
+- ❌ `wip` → "If applied, this commit will wip." — meaningless.
+- ❌ `changes` → "If applied, this commit will changes." — useless.
+
+### Why This Matters for Achilles
+
+When you're debugging a scope enforcement bug on Day 20, you will run `git log --oneline --grep="scope"` and see:
+
+```
+a3b2c1d feat(scope): add three-point enforcement (pre, per-node, post)
+f4e5d6c fix(scope): handle excluded subdomain under wildcard
+9a8b7c6 feat(scope): add CIDR range matching
+1d2e3f4 feat(scope): add scope enforcement struct for domain and IP rules
+```
+
+Every commit about scope, in order, with a clear description. You can `git show a3b2c1d` to see exactly what changed when you added three-point enforcement. You
+can `git diff 9a8b7c6..a3b2c1d` to see every change between CIDR matching and three-point enforcement.
+
+This is not possible with `"wip"` and `"fix stuff"` messages.
+
+---
+
+## Part 4: Key Concepts to Internalize
+
+Before marking this day complete, verify you can answer each of these from memory:
+
+| Question | Your Answer Should Include |
+|----------|--------------------------|
+| What are the three zones in Git? | Working directory, staging area (index), repository (.git) |
+| What does `git add` do? | Moves changes from working directory → staging area |
+| What does `git commit` do? | Moves the staging area → repository (creates a permanent snapshot) |
+| What does `git status` show? | The state of all three zones — what's changed, what's staged, what's committed |
+| What does `git diff` show? | Differences between working directory and staging area |
+| What is `git add -p`? | Patch mode — stage specific hunks, not entire files |
+| Why does the staging area exist? | To compose commits from specific changes (one logical change per commit) |
+| What is a commit hash? | SHA-1 hash of the tree + parent + author + timestamp + message — unique ID, tamper-evident |
+| What does `HEAD` point to? | The current branch, which points to the latest commit |
+| What's wrong with `git commit -m "fix stuff"`? | No type, no component, no description. Useless in history. |
+
+---
+
+## Completion Checklist
+
+Before moving to Day G2, verify all of the following:
+
+- [ ] I ran `git init` and understand what the `.git/` directory contains
+- [ ] I created a file, observed it as "untracked", staged it, and committed it
+- [ ] I used `git diff` to see changes before staging
+- [ ] I used `git add -p` (patch mode) to selectively stage changes
+- [ ] I staged one file while leaving another untracked, and committed only the staged one
+- [ ] I have at least 9 commits with proper `type(component): description` messages
+- [ ] I ran `git log --oneline --graph` and can read the history
+- [ ] I can explain the three-zone model without looking at notes
+
+---
+
+## Lesson
+
+> Your commit history is a narrative. A reviewer reading your commits should understand the arc of your development — what you built, in what order,
+why each change was made. This is the difference between a portfolio and a dump of code.
+
+**Next: Day G2 — Branching, Merging, and GitHub →**
