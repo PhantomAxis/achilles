@@ -832,15 +832,15 @@ cargo run --bin day2_mut_refs
 
 ## Completion Checklist
 
-- [ ] Rustlings: completed all exercises through `error_handling`
-- [ ] `day2_borrowing.rs`: Implemented `count_words` with `&str`, called it multiple times with same data
-- [ ] `day2_errors.rs`: Used `Result<T, E>` and `?` operator, handled success and failure cases
-- [ ] `day2_serde.rs`: Serialized/deserialized a HashMap and a struct, verified round-trip lossless
-- [ ] `day2_mut_refs.rs`: Used `&mut` references, understood the borrowing rules
-- [ ] I can explain the difference between `String` and `&str` and when to use each
-- [ ] I can explain why `?` is preferred over `unwrap()` in production code
-- [ ] I understand the borrowing rules: many `&T` OR one `&mut T`, never both
-- [ ] I've added `serde` and `serde_json` to `Cargo.toml`
+- [x] Rustlings: completed all exercises through `error_handling`
+- [x] `day2_borrowing.rs`: Implemented `count_words` with `&str`, called it multiple times with same data
+- [x] `day2_errors.rs`: Used `Result<T, E>` and `?` operator, handled success and failure cases
+- [x] `day2_serde.rs`: Serialized/deserialized a HashMap and a struct, verified round-trip lossless
+- [x] `day2_mut_refs.rs`: Used `&mut` references, understood the borrowing rules
+- [x] I can explain the difference between `String` and `&str` and when to use each
+- [x] I can explain why `?` is preferred over `unwrap()` in production code
+- [x] I understand the borrowing rules: many `&T` OR one `&mut T`, never both
+- [x] I've added `serde` and `serde_json` to `Cargo.toml`
 
 ---
 
