@@ -1,1 +1,7 @@
-/target
+# Emacs lockfiles and backups
+.#*
+*~
+\#*\#
+
+# Rust build artifacts
+/target/
