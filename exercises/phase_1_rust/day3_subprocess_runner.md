@@ -602,15 +602,15 @@ each argument is always separate.
 
 ## Completion Checklist
 
-- [ ] Read and understand Parts 1–6 (Command, shell injection, Stdio, output vs spawn, UTF-8, Cow)
-- [ ] Exercise 1 — Basic command execution (`day3_basic_command.rs`)
-- [ ] Exercise 2 — Error handling: success, failure, not found (`day3_error_handling.rs`)
-- [ ] Exercise 3 — `run_tool` function with `ToolOutput`/`ToolError` types (`day3_runner.rs`)
-- [ ] Exercise 4 — Shell injection proof: direct vs shell (`day3_injection_proof.rs`)
-- [ ] Exercise 5 — Run real tools: `uname`, `whoami`, `nmap`, `id` (`day3_real_tool.rs`)
-- [ ] Can explain why `Command::new` is safe and `sh -c` is dangerous
-- [ ] Can explain the difference between `.output()` `Err` and non-zero exit code
-- [ ] Can explain why `Stdio::null()` is mandatory for stdin
+- [X] Read and understand Parts 1–6 (Command, shell injection, Stdio, output vs spawn, UTF-8, Cow)
+- [X] Exercise 1 — Basic command execution (`day3_basic_command.rs`)
+- [X] Exercise 2 — Error handling: success, failure, not found (`day3_error_handling.rs`)
+- [X] Exercise 3 — `run_tool` function with `ToolOutput`/`ToolError` types (`day3_runner.rs`)
+- [X] Exercise 4 — Shell injection proof: direct vs shell (`day3_injection_proof.rs`)
+- [X] Exercise 5 — Run real tools: `uname`, `whoami`, `nmap`, `id` (`day3_real_tool.rs`)
+- [X] Can explain why `Command::new` is safe and `sh -c` is dangerous
+- [X] Can explain the difference between `.output()` `Err` and non-zero exit code
+- [X] Can explain why `Stdio::null()` is mandatory for stdin
 
 ---
 
