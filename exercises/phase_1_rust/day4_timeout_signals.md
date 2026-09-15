@@ -184,6 +184,7 @@ loop {
             // Still running — check timeout
             if start.elapsed() > timeout {
                 child.kill()?;
+                child.wait()?;  // reap the zombie — collect exit status so OS removes the entry
                 // Timeout!
                 break;
             }
