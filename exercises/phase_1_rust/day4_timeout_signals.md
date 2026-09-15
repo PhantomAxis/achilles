@@ -650,16 +650,16 @@ is cleaner than both approaches.
 
 ## Completion Checklist
 
-- [ ] Read and understand Parts 1-4
+- [X] Read and understand Parts 1-4
       (spawn, timeout pattern, signals, permission errors)
-- [ ] Exercise 1 -- Spawn and wait with `.spawn()` (`day4_spawn.rs`)
-- [ ] Exercise 2 -- Timeout with polling loop (`day4_timeout.rs`)
-- [ ] Exercise 3 -- Runner v2 with timeout + duration (`day4_runner_v2.rs`)
-- [ ] Exercise 4 -- Deliberate break: trigger every failure mode (`day4_break.rs`)
-- [ ] Can explain why `.output()` can't do timeouts
-- [ ] Can explain `try_wait()` vs `wait()` vs `wait_with_output()`
-- [ ] Can explain the difference between SIGTERM and SIGKILL
-- [ ] Can list all four subprocess failure modes
+- [X] Exercise 1 -- Spawn and wait with `.spawn()` (`day4_spawn.rs`)
+- [X] Exercise 2 -- Timeout with polling loop (`day4_timeout.rs`)
+- [X] Exercise 3 -- Runner v2 with timeout + duration (`day4_runner_v2.rs`)
+- [X] Exercise 4 -- Deliberate break: trigger every failure mode (`day4_break.rs`)
+- [X] Can explain why `.output()` can't do timeouts
+- [X] Can explain `try_wait()` vs `wait()` vs `wait_with_output()`
+- [X] Can explain the difference between SIGTERM and SIGKILL
+- [X] Can list all four subprocess failure modes
 
 ---
 
