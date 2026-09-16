@@ -882,18 +882,19 @@ fake_binary: NotFound: No such file or directory (os error 2)
 
 ---
 
-### Exercise 4 -- Generic function with trait bounds
+### Exercise 4 -- Trait objects and dynamic dispatch
 
 Create `~/Antigravity/Achilles/src/bin/day5_generics.rs`.
 
-**Task:** Write generic functions that work with any `Executable`.
+**Task:** Store different tool types in one collection and run them
+through a single interface.
 
 1. Copy your `Executable` trait, `EchoRunner`, and `LsRunner` from Exercise 1
 
-2. Write a generic function:
+2. Write a function that takes a trait object reference:
 
 ```rust
-fn run_and_report<T: Executable>(tool: &T) {
+fn run_and_report(tool: &dyn Executable) {
     println!("=== {} ===", tool.name());
     println!("Description: {}", tool.description());
     match tool.run() {
@@ -904,6 +905,15 @@ fn run_and_report<T: Executable>(tool: &T) {
 }
 ```
 
+**Why `&dyn Executable` and not `&impl Executable`:**
+`run_and_report` is called from `run_all`, which iterates over
+`Vec<Box<dyn Executable>>`. At that point, the concrete type is
+unknown -- it could be EchoRunner or LsRunner. Generics (`impl Trait`)
+require the compiler to know the exact type at compile time (the
+hidden `Sized` bound). `dyn Trait` is NOT `Sized` -- its size is
+unknown. So you must use `&dyn Executable` (dynamic dispatch), not
+a generic.
+
 3. Write a function that takes a `Vec` of trait objects:
 
 ```rust
@@ -912,6 +922,19 @@ fn run_all(tools: Vec<Box<dyn Executable>>) {
         run_and_report(tool.as_ref());
     }
 }
+```
+
+**Why `.as_ref()`:**
+In the loop, `tool` is `&Box<dyn Executable>` -- a reference to a Box.
+But `run_and_report` wants `&dyn Executable` -- a reference to the
+trait object directly. `.as_ref()` peels off the Box layer:
+
+```
+&Box<dyn Executable>   ← what you have
+        │
+        │  .as_ref()
+        ▼
+&dyn Executable        ← what run_and_report needs
 ```
 
 4. In `main()`, create a `Vec<Box<dyn Executable>>` containing both
