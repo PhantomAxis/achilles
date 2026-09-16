@@ -578,7 +578,82 @@ are NOT Send/Sync).
 
 ---
 
-## Part 11: Cargo Clippy and Cargo Fmt
+## Part 11: Discarding Results — The `let _ =` Pattern
+
+When a function returns `Result`, Rust warns you if you ignore it.
+Ignoring errors is usually a bug, so the compiler forces you to
+acknowledge the return value.
+
+```rust
+child.kill();    // COMPILER WARNING: unused `Result` that must be used
+```
+
+You have three choices:
+
+### Option 1: `.unwrap()` — crash if it fails
+
+```rust
+child.kill().unwrap();
+```
+
+If `kill()` returns `Err`, the program panics. Use this when failure
+is genuinely unexpected and should crash. **Don't use this in a timeout
+handler** -- the process might already be dead, and killing a dead
+process returns an error. You don't want to crash because you
+successfully timed something out.
+
+### Option 2: `?` — propagate the error up
+
+```rust
+child.kill()?;
+```
+
+If `kill()` returns `Err`, the current function immediately returns
+that error. Use this when the caller should handle the failure. But
+in a timeout handler, you're already handling the situation -- you
+don't want to abort the timeout logic because kill failed.
+
+### Option 3: `let _ =` — intentionally discard
+
+```rust
+let _ = child.kill();
+let _ = child.wait();
+```
+
+`_` is the "black hole" pattern. It tells the compiler: "I see
+the Result. I'm deliberately throwing it away." No warning. No crash.
+No propagation.
+
+### What happens under the hood
+
+```rust
+let _ = child.kill();
+```
+
+The compiler generates code that:
+1. Calls `child.kill()`
+2. Gets back a `Result<(), io::Error>`
+3. Drops the Result immediately without inspecting it
+
+The `_` binding never actually stores the value. The compiler
+optimizes it to: "call the function, ignore the return." It's the
+same as calling a void function in C.
+
+### When to use `let _ =`
+
+Use it when **failure is expected and harmless:**
+
+- Killing a process that's already dead -- it's dead, you don't care
+- Closing a file that might already be closed
+- Sending to a channel where the receiver might have disconnected
+
+Don't use it to silence warnings on errors you should actually handle.
+If `spawn()` fails, that matters -- use `?`. If `kill()` fails on a
+dead process, that's fine -- use `let _ =`.
+
+---
+
+## Part 12: Cargo Clippy and Cargo Fmt
 
 Starting today, add these to your workflow:
 
@@ -607,7 +682,7 @@ Start now. Fix 2 warnings per commit, not 200 on release day.
 
 ---
 
-## Part 12: Exercises
+## Part 13: Exercises
 
 > [!IMPORTANT]
 > These exercises are task-based.
@@ -658,6 +733,7 @@ enum ToolError {
 ```rust
 struct EchoRunner {
     message: String,
+    timeout: Duration,
 }
 
 struct LsRunner {
@@ -666,9 +742,15 @@ struct LsRunner {
 }
 ```
 
+Both runners have a `timeout` field. Every tool gets a time limit.
+No exceptions. A tool that can hang forever is a liability.
+
 `EchoRunner::run()` should:
-- Spawn `echo` with the message
+- Spawn `echo` with the message, using a timeout (polling loop from Day 4)
 - Return `ToolResult::Success` with stdout and duration
+- Return `ToolResult::Timeout` if timeout exceeded
+- Use `let _ = child.kill()` and `let _ = child.wait()` in the timeout
+  path (the process might already be dead -- use `let _ =`, not `.unwrap()`)
 
 `LsRunner::run()` should:
 - Spawn `ls` with the path, using a timeout (polling loop from Day 4)
@@ -680,7 +762,7 @@ struct LsRunner {
 4. In `main()`, create instances and call `.run()` on each:
 
 ```rust
-let echo = EchoRunner { message: "hello from trait".to_string() };
+let echo = EchoRunner { message: "hello from trait".to_string(), timeout: Duration::from_secs(5) };
 let ls_ok = LsRunner { path: "/tmp".to_string(), timeout: Duration::from_secs(5) };
 let ls_bad = LsRunner { path: "/root".to_string(), timeout: Duration::from_secs(5) };
 ```
@@ -924,7 +1006,7 @@ to format the output. **The compiler ensures every variant is handled.**
 
 ---
 
-## Part 13: Rustlings
+## Part 14: Rustlings
 
 Before or after the exercises (your choice), complete these
 Rustlings sections:
@@ -941,7 +1023,7 @@ Run: `rustlings`
 
 ---
 
-## Part 14: Key Concepts to Internalize
+## Part 15: Key Concepts to Internalize
 
 **1. What is a trait?**
 A contract. Any type implementing it must have the specified methods.
@@ -997,13 +1079,19 @@ Run it before every commit starting today.
 An auto-formatter. Standardizes code style.
 Run it before every commit starting today.
 
+**13. What is `let _ =`?**
+Intentional Result discard. Tells the compiler: "I know this returns
+a Result. I'm deliberately ignoring it." Use when failure is expected
+and harmless (killing a dead process, closing a closed file).
+Don't use to silence warnings on errors that actually matter.
+
 ---
 
 ## Completion Checklist
 
-- [ ] Read and understand Parts 1-11
+- [ ] Read and understand Parts 1-12
       (traits, generics, trait bounds, trait objects vs enums,
-      Display, From, supertraits, clippy, fmt)
+      Display, From, supertraits, discarding Results, clippy, fmt)
 - [ ] Exercise 1 -- Trait-based tool runner (`day5_traits.rs`)
 - [ ] Exercise 2 -- Display implementations (`day5_display.rs`)
 - [ ] Exercise 3 -- From trait to eliminate boilerplate (`day5_from.rs`)
