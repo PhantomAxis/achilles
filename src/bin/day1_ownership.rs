@@ -27,7 +27,7 @@ fn main() {
 
     let service = String::from("http");
     let service_moved = service; // Move — service is now invalid
-                                 // println!("Service: {}", service); // ❌ Uncomment to see the error
+    // println!("Service: {}", service); // ❌ Uncomment to see the error
     println!("Moved service: {}", service_moved);
 
     // ----- PART C: Ownership with Vec -----
@@ -50,7 +50,7 @@ fn main() {
     let host = String::from("scanme.nmap.org");
     let host2 = host; // Move 1: host → host2
     let host3 = host2; // Move 2: host2 → host3
-                       // Both host and host2 are now invalid. Only host3 owns the data.
+    // Both host and host2 are now invalid. Only host3 owns the data.
     println!("Final owner: {}", host3);
 }
 

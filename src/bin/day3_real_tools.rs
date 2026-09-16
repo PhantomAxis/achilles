@@ -59,7 +59,10 @@ fn main() {
 
     print_result("uname -a", run_tool("uname", &["-a"]));
     print_result("whoami", run_tool("whoami", &[]));
-    print_result("namp --version (intentionally misspelt)", run_tool("namp", &["--version"]));
+    print_result(
+        "namp --version (intentionally misspelt)",
+        run_tool("namp", &["--version"]),
+    );
     print_result("id", run_tool("id", &[]));
 }
 

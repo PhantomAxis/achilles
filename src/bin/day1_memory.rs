@@ -74,7 +74,7 @@ fn main() {
     // Move: heap data transfer ownership (no data copied)
     let s1 = String::from("Achilles");
     let s2 = s1; // Only copies 24 bytes of stack metadata — the heap data doesn't move
-                 // s1 is invalidated — but the actual string bytes are still at the same heap address
+    // s1 is invalidated — but the actual string bytes are still at the same heap address
     println!("Moved String: s2={}", s2);
     // println!("s1={}", s1);  // ❌ s1 is invalid
 
