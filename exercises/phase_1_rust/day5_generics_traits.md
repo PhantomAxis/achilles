@@ -1112,20 +1112,20 @@ Don't use to silence warnings on errors that actually matter.
 
 ## Completion Checklist
 
-- [ ] Read and understand Parts 1-12
+- [X] Read and understand Parts 1-12
       (traits, generics, trait bounds, trait objects vs enums,
       Display, From, supertraits, discarding Results, clippy, fmt)
-- [ ] Exercise 1 -- Trait-based tool runner (`day5_traits.rs`)
-- [ ] Exercise 2 -- Display implementations (`day5_display.rs`)
-- [ ] Exercise 3 -- From trait to eliminate boilerplate (`day5_from.rs`)
-- [ ] Exercise 4 -- Generic functions + Vec<Box<dyn Executable>> (`day5_generics.rs`)
-- [ ] Exercise 5 -- ADCObject enum preview (`day5_adc_preview.rs`)
-- [ ] Complete Rustlings: generics1-2, traits1-5
-- [ ] Run `cargo clippy` and fix all warnings
-- [ ] Run `cargo fmt` on all files
-- [ ] Can explain the difference between `impl Trait` and `dyn Trait`
-- [ ] Can explain why Achilles uses enums instead of trait objects for ADC
-- [ ] Can implement `Display` and `From` for custom types
+- [X] Exercise 1 -- Trait-based tool runner (`day5_traits.rs`)
+- [X] Exercise 2 -- Display implementations (`day5_display.rs`)
+- [X] Exercise 3 -- From trait to eliminate boilerplate (`day5_from.rs`)
+- [X] Exercise 4 -- Generic functions + Vec<Box<dyn Executable>> (`day5_generics.rs`)
+- [X] Exercise 5 -- ADCObject enum preview (`day5_adc_preview.rs`)
+- [X] Complete Rustlings: generics1-2, traits1-5
+- [X] Run `cargo clippy` and fix all warnings
+- [X] Run `cargo fmt` on all files
+- [X] Can explain the difference between `impl Trait` and `dyn Trait`
+- [X] Can explain why Achilles uses enums instead of trait objects for ADC
+- [X] Can implement `Display` and `From` for custom types
 
 ---
 
