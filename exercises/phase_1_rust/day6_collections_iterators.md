@@ -1396,21 +1396,21 @@ avoiding unnecessary clones and allocations.
 
 ## Completion Checklist
 
-- [ ] Read and understand Parts 1-10
+- [X] Read and understand Parts 1-10
       (Vec, three iterators, adaptors, consuming methods, closures,
       HashMap, Entry API, grouping, Option combinators, lifetimes)
-- [ ] Exercise 1 -- Filter and sort hostnames (day6_filter.rs)
-- [ ] Exercise 2 -- Group hosts by IP (day6_group.rs)
-- [ ] Exercise 3 -- Iterator chains on ADCObjects (day6_iterators.rs)
-- [ ] Exercise 4 -- Option combinators (day6_options.rs)
-- [ ] Exercise 5 -- Merge node preview (day6_merge.rs)
-- [ ] Complete Rustlings: lifetimes1-3, iterators1-5
-- [ ] Run `cargo clippy` and fix all warnings
-- [ ] Run `cargo fmt` on all files
-- [ ] Can chain .iter().filter().map().collect() fluently
-- [ ] Can use Entry API for grouping operations
-- [ ] Can use Option combinators instead of match blocks
-- [ ] Can explain the difference between .iter(), .iter_mut(), .into_iter()
+- [X] Exercise 1 -- Filter and sort hostnames (day6_filter.rs)
+- [X] Exercise 2 -- Group hosts by IP (day6_group.rs)
+- [X] Exercise 3 -- Iterator chains on ADCObjects (day6_iterators.rs)
+- [X] Exercise 4 -- Option combinators (day6_options.rs)
+- [X] Exercise 5 -- Merge node preview (day6_merge.rs)
+- [X] Complete Rustlings: lifetimes1-3, iterators1-5
+- [X] Run `cargo clippy` and fix all warnings
+- [X] Run `cargo fmt` on all files
+- [X] Can chain .iter().filter().map().collect() fluently
+- [X] Can use Entry API for grouping operations
+- [X] Can use Option combinators instead of match blocks
+- [X] Can explain the difference between .iter(), .iter_mut(), .into_iter()
 
 ---
 
